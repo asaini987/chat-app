@@ -5,7 +5,7 @@ CFLAGS = -I$(IDIR) -Wall -Wextra -g -pthread
 ODIR = obj
 SDIR = src
 LDIR = lib
-TDIR = test
+# TDIR = test
 LIBS = -lm
 XXLIBS = -lpthread $(LIBS)
 

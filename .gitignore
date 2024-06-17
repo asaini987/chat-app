@@ -4,5 +4,5 @@ client_app
 server_app
 
 .vscode/
-lib/*
-obj/*
+lib/
+obj/

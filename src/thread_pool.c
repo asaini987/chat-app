@@ -2,41 +2,41 @@
 
 #include "thread_pool.h" 
 
-struct ThreadPool* thread_pool_init(int num_threads) { // add error checking
-    struct ThreadPool* thread_pool = (struct ThreadPool*) malloc(sizeof(struct ThreadPool));
+struct thread_pool* thread_pool_init(const int num_threads) { // add error checking
+    struct thread_pool* tpool = (struct thread_pool*) malloc(sizeof(struct thread_pool));
 
-    thread_pool->threads = (pthread_t*) malloc(sizeof(pthread_t) * num_threads);
-    thread_pool->thread_count = num_threads;
+    tpool->threads = (pthread_t*) malloc(sizeof(pthread_t) * num_threads);
+    tpool->thread_cnt = num_threads;
 
-    struct TaskQueue* tk_queue = (struct TaskQueue*) malloc(sizeof(struct TaskQueue));
-    tk_queue->head = NULL;
-    tk_queue->tail = NULL;
-    pthread_mutex_init(&(tk_queue->mutex), NULL);
-    pthread_cond_init(&(tk_queue->cond), NULL);
+    struct task_queue* tskq = (struct task_queue*) malloc(sizeof(struct task_queue));
+    tskq->head = NULL;
+    tskq->tail = NULL;
+    pthread_mutex_init(&(tskq->mutex), NULL);
+    pthread_cond_init(&(tskq->cond), NULL);
 
-    thread_pool->task_queue = tk_queue;
+    tpool->tsk_queue = tskq;
 
-    return thread_pool;
+    return tpool;
 }
 
-void thread_pool_destroy(struct ThreadPool* thread_pool) {
-    for (int i = 0; i < thread_pool->thread_count; i++) {
-        pthread_join(thread_pool->threads[i], NULL);
+void thread_pool_destroy(struct thread_pool* tpool) {
+    for (int i = 0; i < tpool->thread_cnt; i++) {
+        pthread_join(tpool->threads[i], NULL);
     }
 
-    pthread_mutex_destroy(&(thread_pool->task_queue->mutex));
-    pthread_cond_destroy(&(thread_pool->task_queue->cond));
+    pthread_mutex_destroy(&(tpool->tsk_queue->mutex));
+    pthread_cond_destroy(&(tpool->tsk_queue->cond));
 
-    struct TaskNode* curr = thread_pool->task_queue->head;
-    struct TaskNode* next_node;
+    struct task_node* curr = tpool->tsk_queue->head;
+    struct task_node* next_node;
 
     while (curr != NULL) {
         next_node = curr->next;
-        free(curr->task);
+        free(curr->tsk);
         free(curr);
         curr = next_node;
     }
     
-    free(thread_pool->task_queue);
-    free(thread_pool);
+    free(tpool->tsk_queue);
+    free(tpool);
 }

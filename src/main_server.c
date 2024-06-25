@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -7,6 +6,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/event.h>
 
 #include "server.h"
 #include "task.h"
@@ -14,9 +15,21 @@
 #include "user.h"
 
 #define MAX_THREADS 10
+#define MAX_EVENTS 151
 
 int main(int argc, char* argv[]) {
     printf("Hello this is the main server\n");
+
+    // register signal handler for SIGINT
+    struct sigaction sa;
+    sigemptyset(&(sa.sa_mask));
+    sa.sa_handler = shutdown_handler;
+    sa.sa_flags = 0;
+
+    if ((sigaction(SIGINT, &sa,  NULL)) == -1) {
+        perror("Failed to register signal handler");
+        exit(1);
+    }
 
     int listenfd; // Listening file descriptor
     int connfd; // Connection file descriptor
@@ -52,13 +65,51 @@ int main(int argc, char* argv[]) {
 
     printf("Echo Server is listening on port %d.\n", port);
     
-    struct ThreadPool* thread_pool = thread_pool_init(MAX_THREADS);
-    struct UserList* users = users_init();
+    struct thread_pool* tpool = thread_pool_init(MAX_THREADS);
+    struct user_list* users = users_init();
 
-    while (true) {
+    struct kevent chlist[MAX_EVENTS]; // events to monitor
+    struct kevent evlist[MAX_EVENTS]; // events that were triggered
+    // TODO: populate arrays
+
+    int kq = kqueue();
+
+    if (kq == -1) {
+        perror("Failed to make kqueue");
+        exit(1);
+    }
+    
+    // initialize kevent struct for monitoring listenfd for READ
+    EV_SET(&chlist[0], listenfd, EVFILT_READ, EV_ADD, 0, 0, 0);
+    int num_changes = 1; // number of changes to monitor
+    int nev; // number of events triggered
+    
+    while (1) { // fix server shutdown
+        if (shutdown_server == 1) {
+            // close(listenfd);
+            puts("Echo server is closing connections and shutting down");
+            break;
+        }
+
+        nev = kevent(kq, chlist, num_changes, evlist, MAX_EVENTS, NULL); // blocks indefinetly
+
+        if (nev == -1) {
+            perror("kevent() failed");
+            exit(1);
+        }
+
+        if (nev > 0) {
+            for (int i = 0; i < nev; i++) { // iterate thru evlist
+                if (evlist[i].ident == listenfd) {
+                    // accept() can be called
+                }
+            }
+        }
+
         client_len = sizeof(client_addr);
         printf("Echo server is accepting incoming connections on port %d.\n", port);
         connfd = accept(listenfd, (struct sockaddr*) &client_addr, &client_len);
+        set_nonblocking(connfd);
 
         // convert network byte order IP addresses to dotted IP string
         haddrp = inet_ntoa(client_addr.sin_addr);
@@ -73,7 +124,7 @@ int main(int argc, char* argv[]) {
             haddrp, port, client_port
         );
 
-        struct Connection conn;
+        struct connection conn;
         conn.connfd = connfd;
         conn.haddrp = haddrp;
 
@@ -85,7 +136,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    thread_pool_destroy(thread_pool);
+    thread_pool_destroy(tpool);
     users_destroy(users);
 
     exit(0);

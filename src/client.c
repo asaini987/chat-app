@@ -13,7 +13,7 @@
 #include "client.h"
 
 // Function to open a client file descriptor given an IP address and port
-int open_clientfd(char *ip_address, int port) {
+int open_clientfd(char* ip_address, int port) {
     int clientfd;
     struct sockaddr_in server_addr;
 
@@ -24,7 +24,7 @@ int open_clientfd(char *ip_address, int port) {
     }
 
     // Set server address details
-    bzero((char *) &server_addr, sizeof(server_addr));
+    bzero((char*) &server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
 
@@ -35,7 +35,7 @@ int open_clientfd(char *ip_address, int port) {
     }
 
     // Connect to the server
-    if (connect(clientfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    if (connect(clientfd, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
         perror("Error connecting to socket");
         return -1;
     }

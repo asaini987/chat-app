@@ -6,11 +6,35 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "server.h"
 
 #define MAXLINE 300 // max text length
 #define LISTENQ 5 // second arg to listen()
+
+volatile sig_atomic_t shutdown_server = 0;
+
+void shutdown_handler(int sig) {
+    puts("signal handler called");
+    if (sig == SIGINT) {
+        shutdown_server = 1;
+    }
+}
+
+void set_nonblocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    
+    if (flags == -1) {
+        perror("fcntl F_GETFL");
+        exit(1);
+    }
+
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("fcntl F_SETFL");
+        exit(1);
+    }
+}
 
 int open_listenfd(int port) {
     int listenfd; // socket file descriptor for server to listen on
@@ -61,7 +85,7 @@ void echo(int connfd) {
 
 void* handle_client_connection(void* conn) {
     pthread_detach(pthread_self());
-    struct Connection* c = (struct Connection*) conn;
+    struct connection* c = (struct connection*) conn;
 
     echo(c->connfd);
     printf("Echo Server is closing the connection on (%s).\n", c->haddrp);

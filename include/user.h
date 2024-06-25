@@ -3,26 +3,26 @@
 
 #include <pthread.h>
 
-struct User {
+struct user {
     int connfd;
     char* username;
 };
 
-struct UserNode {
-    struct User* user;
-    struct UserNode* next;
+struct user_node {
+    struct user* usr;
+    struct user_node* next;
 };
 
-struct UserList {
-    struct UserNode* head;
+struct user_list {
+    struct user_node* head;
     int len;
     pthread_mutex_t mutex;
 };
 
-struct UserList* users_init();
-void users_destroy(struct UserList* users);
+struct user_list* user_list_init();
+void user_list_destroy(struct user_list* user_lst);
 
-void add_user(struct User* user);
+void add_user(struct user* new_user);
 void remove_user(int connfd);
 
 #endif

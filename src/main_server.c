@@ -8,14 +8,15 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/event.h>
+#include <errno.h>
 
 #include "server.h"
 #include "task.h"
 #include "thread_pool.h"
 #include "user.h"
 
-#define MAX_THREADS 10
-#define MAX_EVENTS 151
+#define MAX_THREADS 7
+#define MAX_EVENTS 51
 
 int main(int argc, char* argv[]) {
     printf("Hello this is the main server\n");
@@ -66,7 +67,7 @@ int main(int argc, char* argv[]) {
     printf("Echo Server is listening on port %d.\n", port);
     
     struct thread_pool* tpool = thread_pool_init(MAX_THREADS);
-    struct user_list* users = users_init();
+    // struct user_list* users = users_init();
 
     struct kevent chlist[MAX_EVENTS]; // events to monitor
     struct kevent evlist[MAX_EVENTS]; // events that were triggered
@@ -86,58 +87,92 @@ int main(int argc, char* argv[]) {
     
     while (1) { // fix server shutdown
         if (shutdown_server == 1) {
-            // close(listenfd);
+            close(listenfd);
             puts("Echo server is closing connections and shutting down");
             break;
         }
 
+        client_len = sizeof(client_addr);
+        printf("Echo server is accepting incoming connections on port %d.\n", port);
+
         nev = kevent(kq, chlist, num_changes, evlist, MAX_EVENTS, NULL); // blocks indefinetly
 
         if (nev == -1) {
-            perror("kevent() failed");
+            perror("kevent()");
+            // interrupted system call
+            if (errno == EINTR) { // Ctrl ^C was pressed, shutdown the server
+                continue;
+            }
+            
             exit(1);
         }
 
         if (nev > 0) {
             for (int i = 0; i < nev; i++) { // iterate thru evlist
-                if (evlist[i].ident == listenfd) {
+                if (evlist[i].ident == (uintptr_t) listenfd) {
                     // accept() can be called
+                    connfd = accept(listenfd, (struct sockaddr*) &client_addr, &client_len);
+
+                    // set_nonblocking(connfd);
+
+                    // convert network byte order IP addresses to dotted IP string
+                    haddrp = inet_ntoa(client_addr.sin_addr);
+
+                    // convert the port number from network byte order to host byte order
+                    client_port = ntohs(client_addr.sin_port);
+
+                    // print an information message
+                    printf(
+                        "Echo Server received a connection to (%s).\n"
+                        "Echo Server is using port %u and client has an ephemeral port of %u.\n",
+                        haddrp, port, client_port
+                    );
+
+                    struct connection conn;
+                    conn.connfd = connfd;
+                    conn.haddrp = haddrp;
+
+                    // service the connection with a thread
+                    pthread_t tid;
+                    if ((pthread_create(&tid, NULL, handle_client_connection, (void*) &conn)) != 0) {
+                        perror("Failed to create thread");
+                        exit(1);
+                    }
                 }
             }
         }
 
-        client_len = sizeof(client_addr);
-        printf("Echo server is accepting incoming connections on port %d.\n", port);
-        connfd = accept(listenfd, (struct sockaddr*) &client_addr, &client_len);
-        set_nonblocking(connfd);
+        // connfd = accept(listenfd, (struct sockaddr*) &client_addr, &client_len);
+        // set_nonblocking(connfd);
 
-        // convert network byte order IP addresses to dotted IP string
-        haddrp = inet_ntoa(client_addr.sin_addr);
+        // // convert network byte order IP addresses to dotted IP string
+        // haddrp = inet_ntoa(client_addr.sin_addr);
 
-        // convert the port number from network byte order to host byte order
-        client_port = ntohs(client_addr.sin_port);
+        // // convert the port number from network byte order to host byte order
+        // client_port = ntohs(client_addr.sin_port);
 
-        // print an information message
-        printf(
-            "Echo Server received a connection to (%s).\n"
-            "Echo Server is using port %u and client has an ephemeral port of %u.\n",
-            haddrp, port, client_port
-        );
+        // // print an information message
+        // printf(
+        //     "Echo Server received a connection to (%s).\n"
+        //     "Echo Server is using port %u and client has an ephemeral port of %u.\n",
+        //     haddrp, port, client_port
+        // );
 
-        struct connection conn;
-        conn.connfd = connfd;
-        conn.haddrp = haddrp;
+        // struct connection conn;
+        // conn.connfd = connfd;
+        // conn.haddrp = haddrp;
 
-        // service the connection with a thread
-        pthread_t tid;
-        if ((pthread_create(&tid, NULL, handle_client_connection, (void*) &conn)) != 0) {
-            perror("Failed to create thread");
-            exit(1);
-        }
+        // // service the connection with a thread
+        // pthread_t tid;
+        // if ((pthread_create(&tid, NULL, handle_client_connection, (void*) &conn)) != 0) {
+        //     perror("Failed to create thread");
+        //     exit(1);
+        // }
     }
 
+    puts("destroying thread pool");
     thread_pool_destroy(tpool);
-    users_destroy(users);
+    // users_destroy(users);
 
     exit(0);
 }

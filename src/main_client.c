@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
 
     // check program args
     if (argc != 3) {
-        fprintf(stderr, "usage: %s <IP Address> <port>\n", argv[0]);
+        fprintf(stderr, "usage: %s <IP address> <port>\n", argv[0]);
         exit(0);
     }
 
@@ -50,6 +50,7 @@ int main(int argc, char* argv[]) {
         buf[strcspn(buf, "\n")] = '\0';
 
         ssize_t ns = send(clientfd, buf, strlen(buf), 0);
+        printf("sent %ld bytes: %s\n", ns, buf);
         ssize_t nr = recv(clientfd, buf, MAXLINE, 0);
 
         // Add a newline back on:

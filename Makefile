@@ -18,7 +18,7 @@ _MAIN_CLIENT_SRC = main_client.c
 _MAIN_SERVER_SRC = main_server.c
 _CLIENT_SRC = client.c
 _SERVER_SRC = server.c
-_ADDITIONAL_SRC = task.c thread_pool.c user.c  # List your additional source files here
+_ADDITIONAL_SRC = task.c thread_pool.c user.c  # List additional source files here
 
 MAIN_CLIENT_OBJ = $(patsubst %,$(ODIR)/%,$(_MAIN_CLIENT_SRC:.c=.o))
 MAIN_SERVER_OBJ = $(patsubst %,$(ODIR)/%,$(_MAIN_SERVER_SRC:.c=.o))

@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
                     conn.connfd = connfd;
                     conn.haddrp = haddrp;
 
-                    // Create connection task and put on the task
+                    // TODO: Create connection task and put on the task queue
 
                     // service the connection with a thread
                     pthread_t tid;
@@ -147,6 +147,7 @@ int main(int argc, char* argv[]) {
 
     puts("destroying thread pool");
     thread_pool_destroy(tpool);
+    tpool = NULL;
     // users_destroy(users);
 
     exit(0);

@@ -26,7 +26,7 @@ struct task_node {
  * @brief Thread-safe queue to insert and delete tasks for the thread pool to execute.
  * 
  * @details This queue is implemented as a linked list with safe concurrent access.
- * It uses a mutex to ensure only one thread accesses the queue at a time 
+ * It uses a mutex to ensure only one thread accesses the queue at a time
  * and a condition varibale to signal when the queue is empty.
 */
 struct task_queue {
@@ -39,8 +39,8 @@ struct task_queue {
 /**
  * @brief Inserts a task to the end of the queue.
  * 
- * @param queue The pointer to the task queue
- * @param new_task The task to insert in the queue
+ * @param queue A pointer to the task queue.
+ * @param new_task A pointer to the task to insert in the task queue.
 */
 void enqueue_task(struct task_queue* queue, struct task* new_task);
 

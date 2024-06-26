@@ -6,6 +6,18 @@
 // Termination flag to signal the pool's threads to exit their function
 static int stop_threads = 0;
 
+void* worker_thread(void* t_arg) {
+    struct task_queue* tsk_queue = (struct task_queue*) t_arg;
+
+    while (!stop_threads) {
+        struct task* tsk = dequeue_task(tsk_queue);
+        tsk->func(tsk->arg); // execute the task
+        free(tsk);
+    }
+
+    return NULL;
+}
+
 struct thread_pool* thread_pool_init(const int num_threads) {
     struct thread_pool* tpool = (struct thread_pool*) malloc(sizeof(struct thread_pool));
 
@@ -89,16 +101,4 @@ void thread_pool_destroy(struct thread_pool* tpool) {
     free(tpool->tsk_queue);
     tpool->tsk_queue = NULL;
     free(tpool);
-}
-
-void* worker_thread(void* t_arg) {
-    struct task_queue* tsk_queue = (struct task_queue*) t_arg;
-
-    while (stop_threads != 0) {
-        struct task* tsk = dequeue_task(tsk_queue);
-        tsk->func(tsk->arg); // execute the task
-        free(tsk);
-    }
-
-    return NULL;
 }

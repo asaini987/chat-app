@@ -37,7 +37,10 @@ void thread_pool_destroy(struct thread_pool* tpool);
 /**
  * @brief A worker thread from the thread pool will execute this function until it is terminated.
  * 
- * @param t_arg The task queue from which the worker thread will dequeue and execute tasks.
+ * @param t_arg A pointer to the thread pool that contains the worker threads.
+ * 
+ * @details Worker threads will dequeue and execute tasks from the task_queue while the thread pool's
+ * stop_threads flag is not set.
 */
 void* worker_thread(void* t_arg);
 

@@ -32,6 +32,7 @@ struct task_node {
 struct task_queue {
     struct task_node* head; // head of the queue
     struct task_node* tail; // tail of the queue
+    int is_closed; // flag to stop block the queue from accepting any more tasks
     pthread_mutex_t mutex; // lock to synchronize threads
     pthread_cond_t cond; // signals threads to sleep when empty
 };
@@ -46,6 +47,10 @@ void enqueue_task(struct task_queue* queue, struct task* new_task);
 
 /**
  * @brief Deletes a task from the front of the queue.
+ * 
+ * @details This function will block threads while the queue is still accepting tasks,
+ * but it is currently empty. Once the queue is closed through its is_closed flag,
+ * it will continue to dequeue tasks normally until it is empty, where it will return NULL. 
  * 
  * @param queue The pointer to the task queue.
  * 

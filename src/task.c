@@ -9,7 +9,7 @@ void enqueue_task(struct task_queue* queue, struct task* new_task) {
     if (node == NULL) {
         perror("malloc() failed");
         exit(1);
-    } 
+    }
 
     // Initialize the new task node
     node->tsk = new_task;
@@ -18,6 +18,11 @@ void enqueue_task(struct task_queue* queue, struct task* new_task) {
     if (pthread_mutex_lock(&(queue->mutex)) != 0) {
         perror("pthread_mutex_lock() failed");
         exit(1);
+    }
+
+    // Do not add tasks to queue when it is closed
+    if (queue->is_closed) {
+        return;
     }
 
     // if adding as first element, set as head, else add onto tail
@@ -46,13 +51,18 @@ struct task* dequeue_task(struct task_queue* queue) {
         exit(1);
     }
 
-    // Attempted to dequeue an empty queue
-    // Block while queue is empty
-    while (queue->head == NULL) {
+    // Block while queue is empty and the queue is open
+    while (queue->head == NULL && !queue->is_closed) {
         if (pthread_cond_wait(&queue->cond, &queue->mutex) != 0) {
             perror("pthread_cond_wait() failed");
             exit(1);
         }
+    }
+
+    // The queue will not take any more tasks and it is empty
+    if (queue->is_closed && queue->head == NULL) {
+        pthread_mutex_unlock(&queue->mutex);
+        return NULL;
     }
 
     struct task_node* ret_node = queue->head;

@@ -71,7 +71,7 @@ int open_listenfd(int port) {
 }
 
 void echo(int connfd) {
-    size_t n;
+    ssize_t n;
     char buf[MAXLINE];
 
     // keep reading until client closes connection
@@ -81,10 +81,11 @@ void echo(int connfd) {
         printf("Echo Server is sending %lu bytes back to client (%s).\n", n, buf);
         send(connfd, buf, n, 0);
     }
+    puts("Client has left the server");
 }
 
 void* handle_client_connection(void* conn) {
-    pthread_detach(pthread_self());
+    // pthread_detach(pthread_self());
     struct connection* c = (struct connection*) conn;
 
     echo(c->connfd);

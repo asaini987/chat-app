@@ -10,7 +10,7 @@
  * The thread pool will execute a task after it dequeues it from the task queue.
 */
 struct task {
-    void (*func) (void*); // thread function
+    void* (*func) (void*); // thread function
     void* arg; // argument to thread function
 };
 

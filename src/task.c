@@ -22,6 +22,7 @@ void enqueue_task(struct task_queue* queue, struct task* new_task) {
 
     // Do not add tasks to queue when it is closed
     if (queue->is_closed) {
+        pthread_mutex_unlock(&(queue->mutex));
         return;
     }
 
@@ -34,8 +35,8 @@ void enqueue_task(struct task_queue* queue, struct task* new_task) {
     queue->tail = node; // reset tail
 
     // signal all blocked threads to wake up as queue is now non-empty
-    if (pthread_cond_broadcast(&queue->cond) != 0) {
-        perror("pthread_cond_broadcast() failed");
+    if (pthread_cond_broadcast(&(queue->cond)) != 0) {
+        perror("pthread_cond_broadcast failed");
         exit(1);
     }
 
@@ -52,8 +53,8 @@ struct task* dequeue_task(struct task_queue* queue) {
     }
 
     // Block while queue is empty and the queue is open
-    while (queue->head == NULL && !queue->is_closed) {
-        if (pthread_cond_wait(&queue->cond, &queue->mutex) != 0) {
+    while (queue->head == NULL && !(queue->is_closed)) {
+        if (pthread_cond_wait(&(queue->cond), &(queue->mutex)) != 0) {
             perror("pthread_cond_wait() failed");
             exit(1);
         }
@@ -61,7 +62,10 @@ struct task* dequeue_task(struct task_queue* queue) {
 
     // The queue will not take any more tasks and it is empty
     if (queue->is_closed && queue->head == NULL) {
-        pthread_mutex_unlock(&queue->mutex);
+        if (pthread_mutex_unlock(&(queue->mutex)) != 0) {
+            perror("pthread_mutex_unlock() failed");
+            exit(1);
+        }
         return NULL;
     }
 

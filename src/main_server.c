@@ -15,7 +15,7 @@
 #include "thread_pool.h"
 #include "user.h"
 
-#define MAX_THREADS 7
+#define MAX_THREADS 8
 #define MAX_EVENTS 51
 
 int main(int argc, char* argv[]) {
@@ -24,13 +24,13 @@ int main(int argc, char* argv[]) {
     // register signal handler for SIGINT
     struct sigaction sa;
     sigemptyset(&(sa.sa_mask));
-    sa.sa_handler = shutdown_handler;
+    // sa.sa_handler = shutdown_handler;
     sa.sa_flags = 0;
 
-    if ((sigaction(SIGINT, &sa,  NULL)) == -1) {
-        perror("Failed to register signal handler");
-        exit(1);
-    }
+    // if ((sigaction(SIGINT, &sa,  NULL)) == -1) {
+    //     perror("Failed to register signal handler");
+    //     exit(1);
+    // }
 
     int listenfd; // Listening file descriptor
     int connfd; // Connection file descriptor
@@ -85,10 +85,8 @@ int main(int argc, char* argv[]) {
     int num_changes = 1; // number of changes to monitor
     int nev; // number of events triggered
     
-    while (1) { // fix server shutdown
+    while (1) {
         if (shutdown_server == 1) {
-            close(listenfd);
-            puts("Echo server is closing connections and shutting down");
             break;
         }
 
@@ -98,7 +96,7 @@ int main(int argc, char* argv[]) {
         nev = kevent(kq, chlist, num_changes, evlist, MAX_EVENTS, NULL); // blocks indefinetly
 
         if (nev == -1) {
-            perror("kevent()");
+            perror("kevent");
             // interrupted system call
             if (errno == EINTR) { // Ctrl ^C was pressed, shutdown the server
                 continue;
@@ -107,11 +105,21 @@ int main(int argc, char* argv[]) {
             exit(1);
         }
 
+        printf("nev: %d\n", nev);
+        
         if (nev > 0) {
+            printf("entering loop\n");
             for (int i = 0; i < nev; i++) { // iterate thru evlist
+                puts("in loop");
+                // a new client is trying to connect to the server
                 if (evlist[i].ident == (uintptr_t) listenfd) {
-                    // accept() can be called
+                    puts("found listenfd");
                     connfd = accept(listenfd, (struct sockaddr*) &client_addr, &client_len);
+
+                    if (connfd == -1) {
+                        perror("accept() failed");
+                        exit(1);
+                    }
 
                     // set_nonblocking(connfd);
 
@@ -121,34 +129,51 @@ int main(int argc, char* argv[]) {
                     // convert the port number from network byte order to host byte order
                     client_port = ntohs(client_addr.sin_port);
 
-                    // print an information message
                     printf(
                         "Echo Server received a connection to (%s).\n"
                         "Echo Server is using port %u and client has an ephemeral port of %u.\n",
                         haddrp, port, client_port
                     );
 
-                    struct connection conn;
-                    conn.connfd = connfd;
-                    conn.haddrp = haddrp;
+                    struct connection* conn = (struct connection*) malloc(sizeof(struct connection));
+
+                    if (conn == NULL) {
+                        perror("malloc() failed");
+                        exit(1);
+                    }
+
+                    conn->connfd = connfd;
+                    conn->haddrp = haddrp;
 
                     // TODO: Create connection task and put on the task queue
 
+                    // adding connfd to monitor for read/write, maybe take away evfilt_write
+                    EV_SET(&(chlist[num_changes]), connfd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, 0);
+                    num_changes++;
+
                     // service the connection with a thread
-                    pthread_t tid;
-                    if ((pthread_create(&tid, NULL, handle_client_connection, (void*) &conn)) != 0) {
-                        perror("Failed to create thread");
-                        exit(1);
-                    }
+                    struct task* tsk = (struct task*) malloc(sizeof(struct task));
+                    tsk->func = handle_client_connection;
+                    tsk->arg = (void*) conn;
+
+                    enqueue_task(tpool->tsk_queue, tsk);
+                    puts("added task");
+                }
+                else { // a socket is readable and/or writable
+                    
                 }
             }
         }
+
+        puts("looping back");
     }
 
+    close(listenfd);
+    puts("Echo server is closing connections and shutting down");
     puts("destroying thread pool");
     thread_pool_destroy(tpool);
     tpool = NULL;
     // users_destroy(users);
 
-    exit(0);
+    return 0;
 }

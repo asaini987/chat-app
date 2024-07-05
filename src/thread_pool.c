@@ -15,7 +15,10 @@ void* worker_thread(void* t_arg) {
         }
 
         (*(tsk->func))(tsk->arg); // execute the task
+        free(tsk->arg);
+        tsk->arg = NULL;
         free(tsk);
+        tsk = NULL;
     }
 
     return NULL;
@@ -25,7 +28,7 @@ struct thread_pool* thread_pool_init(const int num_threads) {
     struct thread_pool* tpool = (struct thread_pool*) malloc(sizeof(struct thread_pool));
 
     if (tpool == NULL) {
-        perror("malloc() failed");
+        perror("malloc failed");
         exit(1);
     }
 
@@ -33,7 +36,7 @@ struct thread_pool* thread_pool_init(const int num_threads) {
     struct task_queue* tskq = (struct task_queue*) malloc(sizeof(struct task_queue));
 
     if (tskq == NULL) {
-        perror("malloc() failed");
+        perror("malloc failed");
         exit(1);
     }
 
@@ -42,12 +45,12 @@ struct thread_pool* thread_pool_init(const int num_threads) {
     tskq->is_closed = 0;
 
     if (pthread_mutex_init(&(tskq->mutex), NULL) != 0) {
-        perror("pthread_mutex_init() failed");
+        perror("pthread_mutex_init failed");
         exit(1);
     }
 
     if (pthread_cond_init(&(tskq->cond), NULL) != 0) {
-        perror("pthread_cond_init() failed");
+        perror("pthread_cond_init failed");
         exit(1);
     }
 
@@ -58,14 +61,14 @@ struct thread_pool* thread_pool_init(const int num_threads) {
     tpool->threads = (pthread_t*) malloc(sizeof(pthread_t) * num_threads);
 
     if (tpool->threads == NULL) {
-        perror("malloc() failed");
+        perror("malloc failed");
         exit(1);
     }
 
     // Start the threads
     for (int i = 0; i < tpool->thread_cnt; i++) {
-        if (pthread_create(&tpool->threads[i], NULL, worker_thread, (void*) tpool->tsk_queue) != 0) {
-            perror("pthread_create() failed");
+        if (pthread_create(&(tpool->threads[i]), NULL, worker_thread, (void*) tpool->tsk_queue) != 0) {
+            perror("pthread_create failed");
             exit(1);
         }
     }
@@ -76,21 +79,21 @@ struct thread_pool* thread_pool_init(const int num_threads) {
 void thread_pool_destroy(struct thread_pool* tpool) {
     // Set termination flag to stop the threads
     if (pthread_mutex_lock(&(tpool->tsk_queue->mutex)) != 0) {
-        perror("pthread_mutex_lock() failed");
+        perror("pthread_mutex_lock failed");
         exit(1);
     }
 
     tpool->tsk_queue->is_closed = 1;
 
     if (pthread_mutex_unlock(&(tpool->tsk_queue->mutex)) != 0) {
-        perror("pthread_mutex_unlock() failed");
+        perror("pthread_mutex_unlock failed");
         exit(1);
     }
     
     // Reap the threads
     for (int i = 0; i < tpool->thread_cnt; i++) {
         if (pthread_join(tpool->threads[i], NULL) != 0) {
-            perror("pthread_join() failed");
+            perror("pthread_join failed");
             exit(1);
         }
     }
@@ -100,11 +103,11 @@ void thread_pool_destroy(struct thread_pool* tpool) {
 
     // Destroy synchronization constructs
     if (pthread_mutex_destroy(&(tpool->tsk_queue->mutex)) != 0) {
-        perror("pthread_mutex_destroy() failed");
+        perror("pthread_mutex_destroy failed");
     }
 
     if (pthread_cond_destroy(&(tpool->tsk_queue->cond)) != 0) {
-        perror("pthread_cond_destroy() failed");
+        perror("pthread_cond_destroy failed");
     }
 
     // Free entire task queue and its nodes

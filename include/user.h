@@ -1,11 +1,14 @@
 #ifndef __USER
 #define __USER
 
-#include <pthread.h>
+#include "message.h"
+
+#define HASH_TABLE_CAPACITY 100
 
 struct user {
     int connfd;
     char* username;
+    struct message_queue* msg_queue;
 };
 
 struct user_node {
@@ -15,14 +18,22 @@ struct user_node {
 
 struct user_list {
     struct user_node* head;
-    int len;
     pthread_mutex_t mutex;
 };
 
-struct user_list* user_list_init();
-void user_list_destroy(struct user_list* user_lst);
+/**
+ * Thread-safe hash map to store their corresponding user structs.
+ * Utilizes chaining to handle collisions.
+ * Key-Value Pair: <char* username, struct user* usr>.
+*/
+struct user_map {
+    struct user_list* users[HASH_TABLE_CAPACITY];
+    int size;
+    pthread_rwlock_t rw_lock;
+};
 
-void add_user(struct user* new_user);
-void remove_user(int connfd);
+struct user_map* user_map_init();
+void add_user(struct user_map* map, struct user* usr);
+void remove_user(struct user_map* map, struct user* usr);
 
 #endif

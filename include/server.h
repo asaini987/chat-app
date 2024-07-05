@@ -12,14 +12,8 @@ struct connection {
     char* haddrp; // domain name of the host (IP Address)
 };
 
-struct message {
-    char* from;
-    char* to;
-    char buffer[300];
-};
-
 // flag to signal server clean up 
-extern volatile sig_atomic_t shutdown_server; 
+extern volatile sig_atomic_t shutdown_server;
 
 /**
  * @brief Sets flag to signal a graceful server shutdown.

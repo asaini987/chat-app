@@ -37,6 +37,8 @@ struct task_queue {
     pthread_cond_t cond; // signals threads to sleep when empty
 };
 
+struct task_queue* task_queue_init();
+
 /**
  * @brief Inserts a task to the end of the queue.
  * 

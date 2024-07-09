@@ -33,26 +33,7 @@ struct thread_pool* thread_pool_init(const int num_threads) {
     }
 
     // Initialize task queue and synchronization constructs
-    struct task_queue* tskq = (struct task_queue*) malloc(sizeof(struct task_queue));
-
-    if (tskq == NULL) {
-        perror("malloc failed");
-        exit(1);
-    }
-
-    tskq->head = NULL;
-    tskq->tail = NULL;
-    tskq->is_closed = 0;
-
-    if (pthread_mutex_init(&(tskq->mutex), NULL) != 0) {
-        perror("pthread_mutex_init failed");
-        exit(1);
-    }
-
-    if (pthread_cond_init(&(tskq->cond), NULL) != 0) {
-        perror("pthread_cond_init failed");
-        exit(1);
-    }
+    struct task_queue* tskq = task_queue_init();
 
     tpool->tsk_queue = tskq;
     tpool->thread_cnt = num_threads;
@@ -65,7 +46,7 @@ struct thread_pool* thread_pool_init(const int num_threads) {
         exit(1);
     }
 
-    // Start the threads
+    // Spawn the threads
     for (int i = 0; i < tpool->thread_cnt; i++) {
         if (pthread_create(&(tpool->threads[i]), NULL, worker_thread, (void*) tpool->tsk_queue) != 0) {
             perror("pthread_create failed");

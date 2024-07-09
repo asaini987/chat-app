@@ -3,6 +3,35 @@
 
 #include "task.h"
 
+struct task_queue* task_queue_init() {
+    struct task_queue* tskq = (struct task_queue*) malloc(sizeof(struct task_queue));
+
+    if (tskq == NULL) {
+        perror("malloc failed");
+        exit(1);
+    }
+
+    tskq->head = NULL;
+    tskq->tail = NULL;
+    tskq->is_closed = 0;
+
+    if (pthread_mutex_init(&(tskq->mutex), NULL) != 0) {
+        perror("pthread_mutex_init failed");
+        exit(1);
+    }
+
+    if (pthread_cond_init(&(tskq->cond), NULL) != 0) {
+        perror("pthread_cond_init failed");
+        exit(1);
+    }
+
+    return tskq;
+}
+
+void task_queue_destroy(struct task_queue* tskq) {
+    
+}
+
 void enqueue_task(struct task_queue* queue, struct task* new_task) {
     struct task_node* node = (struct task_node*) malloc(sizeof(struct task_node));
 
@@ -22,7 +51,11 @@ void enqueue_task(struct task_queue* queue, struct task* new_task) {
 
     // Do not add tasks to queue when it is closed
     if (queue->is_closed) {
-        pthread_mutex_unlock(&(queue->mutex));
+        if (pthread_mutex_unlock(&(queue->mutex)) != 0) {
+            perror("pthread_mutex_unlock failed");
+            exit(1);
+        }
+        
         return;
     }
 
@@ -52,7 +85,7 @@ struct task* dequeue_task(struct task_queue* queue) {
         exit(1);
     }
 
-    // Block while queue is empty and the queue is open
+    // Block while queue is empty but open
     while (queue->head == NULL && !(queue->is_closed)) {
         if (pthread_cond_wait(&(queue->cond), &(queue->mutex)) != 0) {
             perror("pthread_cond_wait() failed");
@@ -60,7 +93,7 @@ struct task* dequeue_task(struct task_queue* queue) {
         }
     }
 
-    // The queue will not take any more tasks and it is empty
+    // The queue is closed and empty
     if (queue->is_closed && queue->head == NULL) {
         if (pthread_mutex_unlock(&(queue->mutex)) != 0) {
             perror("pthread_mutex_unlock() failed");

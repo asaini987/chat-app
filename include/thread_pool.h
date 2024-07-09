@@ -8,7 +8,7 @@
  * 
  * @details Minimizes overhead of repeated thread creation and destruction.
  * Allows for the use of "reusable" threads and does not restrict the server 
- * to a one thread-per-client model.
+ * to a one-thread-per-client model.
 */
 struct thread_pool {
     pthread_t* threads; // array of threads

@@ -24,13 +24,13 @@ int main(int argc, char* argv[]) {
     // register signal handler for SIGINT
     struct sigaction sa;
     sigemptyset(&(sa.sa_mask));
-    // sa.sa_handler = shutdown_handler;
+    sa.sa_handler = shutdown_handler;
     sa.sa_flags = 0;
 
-    // if ((sigaction(SIGINT, &sa,  NULL)) == -1) {
-    //     perror("Failed to register signal handler");
-    //     exit(1);
-    // }
+    if (sigaction(SIGINT, &sa,  NULL) == -1) {
+        perror("Failed to register signal handler");
+        exit(1);
+    }
 
     int listenfd; // Listening file descriptor
     int connfd; // Connection file descriptor
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
     struct kevent evlist[MAX_EVENTS]; // events that were triggered
     // TODO: populate arrays
 
-    int kq = kqueue();
+    const int kq = kqueue();
 
     if (kq == -1) {
         perror("Failed to make kqueue");
@@ -135,6 +135,7 @@ int main(int argc, char* argv[]) {
                         haddrp, port, client_port
                     );
 
+                    // pair with udata field of kevent instead?
                     struct connection* conn = (struct connection*) malloc(sizeof(struct connection));
 
                     if (conn == NULL) {
@@ -151,7 +152,7 @@ int main(int argc, char* argv[]) {
                     EV_SET(&(chlist[num_changes]), connfd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, 0);
                     num_changes++;
 
-                    // service the connection with a thread
+                    // add user to user map
                     struct task* tsk = (struct task*) malloc(sizeof(struct task));
                     tsk->func = handle_client_connection;
                     tsk->arg = (void*) conn;

@@ -41,7 +41,7 @@ Coming soon: a GUI for the client using the GTK library
 1. Fork the repository:
     - Go to https://github.com/asaini987/chat-app and click the "Fork" button in the top-right corner.
 
-2. **Clone Your Forked Repository:**
+2. Clone Your Forked Repository:
     - After forking, clone the repository using the URL for your fork:
     ```sh
     git clone https://github.com/YOUR_GITHUB_USERNAME/chat-app.git

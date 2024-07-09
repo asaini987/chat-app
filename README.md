@@ -34,6 +34,7 @@ Coming soon: a GUI for the client using the GTK library
 
 - A BSD-based operating system (e.g, macOS)
 - GCC compiler
+- `make` utility
 
 ### Building the Project
 

@@ -47,8 +47,7 @@ Coming soon: a GUI for the client using the GTK library
     git clone https://github.com/YOUR_GITHUB_USERNAME/chat-app.git
     cd chat-app
     ```
-    Replace `YOUR_GITHUB_USERNAME` with your actual GitHub username.app
-    ```
+    Replace `YOUR_GITHUB_USERNAME` with your actual GitHub username
 
 3. Compile the server:
     ```sh

@@ -1,6 +1,6 @@
 # Multi-threaded Chat Server and Client
 
-This project is a multi-threaded chat server and client application implemented in C. The server uses `kqueue` for efficient event notification and `pthreads` for creating a thread pool to handle multiple client connections concurrently. The client connects to the server to send and receive messages.
+This project is a multi-threaded, scalable chat server and client application implemented in C. The server uses `kqueue` for efficient event notification and `pthreads` for creating a thread pool to handle multiple client connections concurrently. The client connects to the server to send and receive messages.
 
 ## Features
 

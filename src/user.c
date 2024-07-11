@@ -175,13 +175,13 @@ int add_user(struct user_map* map, char* username, struct user* usr) {
 
     // username is not a duplicate
     curr->next = new_node;
-
-    update_map(map, MAP_ADDITION);
     
     if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
         perror("pthread_rwlock_unlock failed");
         exit(1);
     }
+
+    update_map(map, MAP_ADDITION);
 
     return 0;
 }

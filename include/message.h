@@ -22,4 +22,6 @@ struct message_queue {
     pthread_mutex_t mutex;
 };
 
+void message_queue_destroy(struct message_queue* msg_queue);
+
 #endif

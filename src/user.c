@@ -187,5 +187,55 @@ int add_user(struct user_map* map, char* username, struct user* usr) {
 }
 
 struct user* remove_user(struct user_map* map, char* username) {
+    uint32_t idx = get_index(map, username);
+    struct user_bucket* bucket = map->table[idx];
 
+    if (pthread_rwlock_wrlock(&(bucket->rw_lock)) != 0) {
+        perror("pthread_rwlock_wrlock failed");
+        exit(1);
+    }
+
+    if (bucket->head == NULL) { // empty bucket, user does not exist
+        if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
+            perror("pthread_rwlock_unlock failed");
+            exit(1);
+        }
+
+        return NULL;
+    }
+
+    struct user_node* curr = bucket->head;
+    struct user_node* prev = NULL;
+
+    while (curr != NULL) {
+        if (strcmp(curr->usr->username, username) == 0) { // found the user
+
+            // if head
+            if (curr == bucket->head) {
+                bucket->head = curr->next;
+                curr->next = NULL;
+
+                struct user* ret = curr->usr;
+                free(curr);
+
+                if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
+                    perror("pthread_rwlock_unlock failed");
+                    exit(1);
+                }
+
+                update_map(map, MAP_REMOVAL);
+
+                return ret;
+            }
+
+            // TODO if not head case and if does not exist case, 
+            // and refactor code to reduce duplication
+            if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
+                perror("pthread_rwlock_unlock failed");
+                exit(1);
+            }
+
+            
+        }
+    }
 }

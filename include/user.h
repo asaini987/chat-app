@@ -85,16 +85,6 @@ int add_user(struct user_map* map, char* username, struct user* usr);
 struct user* remove_user(struct user_map* map, char* username);
 
 /**
- * @brief Checks if a user with the username is already in the hash map
- * 
- * @param map A pointer to the hash map to search.
- * @param username The username that will be checked for duplicates within the map.
- * 
- * @return 1 if there is a duplicate username, 0 if not.
-*/
-int is_duplicate_username(struct user_map* map, char* username);
-
-/**
  * @brief Attempts to retrieve a user from the hash table.
  * 
  * @param map A pointer to the user hash map to search

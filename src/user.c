@@ -75,7 +75,14 @@ void user_map_destroy(struct user_map* usr_map) {
     }
 }
 
-// FNV-1a Hash Algorithm
+/**
+ * @brief FNV-1a Hash Algorithm. Calculates the hash value of a string.
+ * 
+ * @param username The username to hash
+ * @param len The length of the username
+ * 
+ * @return The hash value of the username.
+*/
 static uint32_t hash_username(const char* username, const int len) {
     uint32_t hash = 2166136261u;
 
@@ -87,6 +94,14 @@ static uint32_t hash_username(const char* username, const int len) {
     return hash;
 }
 
+/**
+ * @brief Calculates the index of a username in a user map's hash table.
+ * 
+ * @param map The user map containing the hash table
+ * @param username The username of which to retrieve the index
+ * 
+ * @return The index of the hash table bucket in which the username should reside.
+*/
 static uint32_t get_index(struct user_map* map, char* username) {
     uint32_t hash = hash_username(username, strlen(username));
 
@@ -109,6 +124,13 @@ static void rehash() {
     // TODO
 }
 
+/**
+ * @brief Updates the map's size and load factor fields based on whether an addition or removal
+ * occurred. Rehashes the table if the load factor exceeds 0.75.
+ * 
+ * @param map A pointer to the user map
+ * @param write_type A flag specifying whether the an addition (0) or removal (1) occured.
+*/
 static void update_map(struct user_map* map, int write_type) {
     if (pthread_mutex_lock(&(map->mutex)) != 0) {
         perror("pthread_mutex_lock failed");
@@ -129,10 +151,6 @@ static void update_map(struct user_map* map, int write_type) {
 }
 
 int add_user(struct user_map* map, char* username, struct user* usr) {
-    struct user_node* new_node = (struct user_node*) malloc(sizeof(struct user_node));
-    new_node->usr = usr;
-    new_node->next = NULL;
-
     uint32_t idx = get_index(map, username);
     struct user_bucket* bucket = map->table[idx];
 
@@ -141,18 +159,7 @@ int add_user(struct user_map* map, char* username, struct user* usr) {
         exit(1);
     }
 
-    if (bucket->head == NULL) { // empty bucket
-        bucket->head = new_node;
-
-        if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
-            perror("pthread_rwlock_unlock failed");
-            exit(1);
-        }
-        
-        update_map(map, MAP_ADDITION);
-        return 0;
-    }
-
+    struct user_node* prev = NULL;
     struct user_node* curr = bucket->head;
 
     while (curr != NULL) {
@@ -162,20 +169,24 @@ int add_user(struct user_map* map, char* username, struct user* usr) {
                 exit(1);
             }
 
-            free(new_node);
             return -1;
         }
 
-        if (curr->next == NULL) { // found tail
-            break;
-        }
-
+        prev = curr;
         curr = curr->next;
     }
 
-    // username is not a duplicate
-    curr->next = new_node;
-    
+    // username does not exist in the map
+    struct user_node* new_node = (struct user_node*) malloc(sizeof(struct user_node));
+    new_node->usr = usr;
+    new_node->next = NULL;
+
+    if (prev == NULL) { // add as head
+        bucket->head = new_node;
+    } else { // add as tail
+        prev->next = new_node;
+    }
+
     if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
         perror("pthread_rwlock_unlock failed");
         exit(1);
@@ -195,47 +206,71 @@ struct user* remove_user(struct user_map* map, char* username) {
         exit(1);
     }
 
-    if (bucket->head == NULL) { // empty bucket, user does not exist
-        if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
-            perror("pthread_rwlock_unlock failed");
-            exit(1);
-        }
-
-        return NULL;
-    }
-
     struct user_node* curr = bucket->head;
     struct user_node* prev = NULL;
 
     while (curr != NULL) {
         if (strcmp(curr->usr->username, username) == 0) { // found the user
-
-            // if head
-            if (curr == bucket->head) {
+            if (curr == bucket->head) { // user is the head
                 bucket->head = curr->next;
-                curr->next = NULL;
-
-                struct user* ret = curr->usr;
-                free(curr);
-
-                if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
-                    perror("pthread_rwlock_unlock failed");
-                    exit(1);
-                }
-
-                update_map(map, MAP_REMOVAL);
-
-                return ret;
+            } else { // user is a middle node
+                prev->next = curr->next;
             }
 
-            // TODO if not head case and if does not exist case, 
-            // and refactor code to reduce duplication
+            curr->next = NULL;
+            struct user* ret = curr->usr;
+            free(curr);
+            
             if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
                 perror("pthread_rwlock_unlock failed");
                 exit(1);
             }
 
-            
+            update_map(map, MAP_REMOVAL);
+
+            return ret;
+        }
+
+        prev = curr;
+        curr = curr->next;
+    }
+
+    // user not found
+    if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
+        perror("pthread_rwlock_unlock failed");
+        exit(1);
+    }
+
+    return NULL;
+}
+
+struct user* get_user(struct user_map* map, char* username) {
+    uint32_t idx = get_index(map, username);
+    struct user_bucket* bucket = map->table[idx];
+
+    if (pthread_rwlock_rdlock(&(bucket->rw_lock)) != 0) {
+        perror("pthread_rwlock_rdlock failed");
+        exit(1);
+    }
+
+    struct user_node* curr = bucket->head;
+
+    while (curr != NULL) {
+        if (strcmp(curr->usr->username, username) == 0) { // found the user
+            if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
+                perror("pthread_rwlock_rdlock failed");
+                exit(1);
+            }
+
+            return curr->usr;
         }
     }
+
+    // user was not found
+    if (pthread_rwlock_unlock(&(bucket->rw_lock)) != 0) {
+        perror("pthread_rwlock_rdlock failed");
+        exit(1);
+    }
+
+    return NULL;
 }

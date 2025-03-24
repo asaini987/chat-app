@@ -25,8 +25,7 @@ The project is currently in progress. The following features are being developed
 - Implementing chat rooms for users to join/create
 - Enhancing the client interface for better user experience
 - Adding SSL encryption to chat communciation
-
-Coming soon: a GUI for the client using the GTK library
+- Developing a GUI for the client using the GTK library
 
 ## Getting Started
 
